@@ -1,0 +1,19 @@
+{
+    "typeCheckingMode": "strict",
+    "pythonVersion": "3.12",
+    "include": [
+        "src",
+        "tests"
+    ],
+    "exclude": [
+        "**/__pycache__",
+        ".venv",
+        "build",
+        "dist",
+        "**/.*"
+    ],
+    "reportMissingTypeStubs": "none",
+    "reportUnnecessaryTypeIgnoreComment": "warning",
+    "reportUnusedImport": "error",
+    "reportUnusedVariable": "error"
+}

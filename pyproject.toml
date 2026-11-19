@@ -1,13 +1,26 @@
 [project]
 name = "project6-1"
 version = "0.1.0"
-description = "Add your description here"
+description = "Production RAG application with hexagonal architecture"
 readme = "README.md"
-authors = [
-    { name = "imranshahadat", email = "imranali.13imran@gmail.com" }
-]
+authors = [{ name = "imranshahadat", email = "imranali.13imran@gmail.com" }]
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "beautifulsoup4>=4.15.0",
+    "httpx>=0.28.1",
+    "langchain>=1.5.2",
+    "langchain-anthropic>=1.7.11",
+    "langchain-openai>=1.8.3",
+    "langgraph>=1.2.23",
+    "pydantic>=2.14.3",
+    "pydantic-settings>=2.16.3",
+    "pypdf>=7.1.1",
+    "python-docx>=1.2.0",
+    "python-dotenv>=1.2.4",
+    "qdrant-client>=1.20.0",
+    "structlog>=26.1.0",
+    "tenacity>=9.2.1",
+]
 
 [project.scripts]
 project6-1 = "project6_1:main"
@@ -15,3 +28,38 @@ project6-1 = "project6_1:main"
 [build-system]
 requires = ["uv_build>=0.13.8,<0.14.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = ["pyright>=1.1.390", "ruff>=0.8.0", "pytest>=8.0.0"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+extend-exclude = [".venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade (modern typing syntax like `Protocol`, `X | Y`)
+    "B",     # flake8-bugbear
+    "SIM",   # flake8-simplify
+    "ASYNC", # flake8-async
+    "S",     # flake8-bandit
+    "RUF",   # Ruff-specific rules
+]
+ignore = [
+    "S101", # Allow assert in tests and explicit type guards
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S106"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"

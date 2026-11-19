@@ -210,6 +210,83 @@ project5/
     └── e2e/                            # FastAPI app wired with fakes
 ```
 
+
+after some modification. using dataclasess separtly
+
+src/project6_1/
+├── __init__.py
+├── domain/
+│   ├── __init__.py
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── chat.py              # ChatMessage, TokenUsage, Role
+│   │   ├── document.py          # Document, Chunk, content_hash
+│   │   ├── embedding.py         # EmbeddingVector, EmbeddedChunk
+│   │   └── answer.py            # RagAnswer, Citation, RetrievedChunk
+│   ├── errors.py                # Exception taxonomy
+│   └── policies/
+│       ├── __init__.py
+│       └── chunking.py          # Chunking strategies (pure logic)
+├── application/
+│   ├── __init__.py
+│   ├── ports/
+│   │   ├── __init__.py
+│   │   ├── llm.py               # ChatModel, StreamingChatModel
+│   │   ├── embeddings.py        # EmbeddingModel
+│   │   ├── vector_store.py      # VectorStore
+│   │   ├── document_loader.py   # DocumentLoader
+│   │   └── cache.py             # Cache
+│   └── use_cases/
+│       ├── __init__.py
+│       ├── commands/
+│       │   ├── __init__.py
+│       │   ├── ask_question.py  # AskCommand
+│       │   └── ingest_document.py # IngestCommand
+│       ├── ask_question.py      # Use case orchestrator
+│       ├── ingest_document.py   # Ingestion pipeline
+│       └── retrieval.py         # SimpleRetriever
+├── adapters/
+│   ├── __init__.py
+│   ├── driving/
+│   │   ├── __init__.py
+│   │   └── api/
+│   │       ├── __init__.py
+│   │       ├── app.py           # FastAPI app
+│   │       └── routes/
+│   │           ├── __init__.py
+│   │           ├── ask.py
+│   │           └── ingest.py
+│   └── driven/
+│       ├── __init__.py
+│       ├── llm/
+│       │   ├── __init__.py
+│       │   ├── openrouter_chat.py    # LangChain-based adapter
+│       │   ├── anthropic_chat.py
+│       │   └── fake_chat.py          # For testing
+│       ├── embeddings/
+│       │   ├── __init__.py
+│       │   └── openai_embeddings.py
+│       ├── vector_store/
+│       │   ├── __init__.py
+│       │   └── qdrant_store.py
+│       └── loaders/
+│           ├── __init__.py
+│           └── pdf_loader.py
+├── infrastructure/
+│   ├── __init__.py
+│   ├── config/
+│   │   ├── __init__.py
+│   │   └── settings.py
+│   ├── container.py             # Composition root
+│   ├── providers.py             # Provider registry
+│   ├── resilience.py            # Retry/timeout/circuit breaker
+│   └── workflows/
+│       ├── __init__.py
+│       └── rag_graph.py         # LangGraph workflow definition
+└── prompts/
+    ├── __init__.py
+    └── rag_answer.py            # Versioned prompt templates
+
 ### 3.2 Folder responsibilities
 
 | Folder | One-sentence purpose | Allowed imports |
