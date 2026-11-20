@@ -432,6 +432,7 @@ The vocabulary and rules of the business: what a `Chunk` is, what a valid `ChatM
 ```python
 # src/project5/domain/models/chat.py
 """Canonical chat vocabulary — provider-independent by design."""
+
 from dataclasses import dataclass
 from typing import Literal
 
@@ -462,23 +463,35 @@ class TokenUsage:
 # src/project5/domain/errors.py
 """One exception hierarchy the whole application speaks.
 Adapters TRANSLATE provider errors into this taxonomy."""
+
+
 class AppError(Exception):
     """Base for every error this application is expected to handle."""
+
 
 class DomainError(AppError):
     """Invalid input or violated business rule → maps to 4xx."""
 
+
 class ExternalError(AppError):
     """A downstream system failed → maps to 5xx."""
+
 
 class ProviderError(ExternalError):
     def __init__(self, provider: str, detail: str) -> None:
         super().__init__(f"{provider}: {detail}")
         self.provider = provider
 
+
 class RateLimitError(ProviderError): ...
+
+
 class ProviderTimeoutError(ProviderError): ...
+
+
 class ProviderUnavailableError(ProviderError): ...
+
+
 class ConfigurationError(AppError):
     """Startup fail-fast: bad config must kill the process immediately."""
 ```
@@ -514,6 +527,7 @@ class ConfigurationError(AppError):
 ```python
 # src/project5/application/ports/llm.py
 """Port: chat completion. Adapters translate this ↔ provider SDKs."""
+
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Protocol
@@ -524,6 +538,7 @@ from project5.domain.models.chat import ChatMessage, TokenUsage
 @dataclass(frozen=True, slots=True)
 class ModelInfo:
     """Capabilities — so use cases never write `if provider == "openai"`."""
+
     provider: str
     default_model: str
     supports_structured_output: bool
@@ -537,19 +552,20 @@ class ChatRequest:
     model: str
     temperature: float = 0.2
     max_tokens: int = 1024
-    json_schema: dict[str, object] | None = None   # honored only if capability allows
+    json_schema: dict[str, object] | None = None  # honored only if capability allows
 
 
 @dataclass(frozen=True, slots=True)
 class ChatResponse:
     text: str
     model: str
-    usage: TokenUsage          # mandatory → cost accounting works app-wide
-    finish_reason: str         # canonical: "stop" | "length" | "content_filter"
+    usage: TokenUsage  # mandatory → cost accounting works app-wide
+    finish_reason: str  # canonical: "stop" | "length" | "content_filter"
 
 
 class ChatModel(Protocol):
     """Non-streaming chat. ISP: simple adapters implement only this."""
+
     info: ModelInfo
 
     async def complete(self, request: ChatRequest) -> ChatResponse: ...
@@ -557,6 +573,7 @@ class ChatModel(Protocol):
 
 class StreamingChatModel(Protocol):
     """Separate capability (Interface Segregation) — not all providers stream well."""
+
     def stream(self, request: ChatRequest) -> AsyncIterator[str]: ...
 ```
 
@@ -568,23 +585,30 @@ class StreamingChatModel(Protocol):
 class EmbeddingInfo:
     provider: str
     model: str
-    dimensions: int            # vector store collection must match!
-    max_batch_size: int        # adapters enforce their own caps
+    dimensions: int  # vector store collection must match!
+    max_batch_size: int  # adapters enforce their own caps
+
 
 class EmbeddingModel(Protocol):
     info: EmbeddingInfo
+
     async def embed(self, texts: Sequence[str]) -> list[EmbeddingVector]: ...
+
 
 # application/ports/vector_store.py
 class VectorStore(Protocol):
     async def upsert(self, chunks: Sequence[EmbeddedChunk]) -> None: ...
-    async def search(self, query_vector: EmbeddingVector, *, top_k: int) -> list[RetrievedChunk]: ...
+    async def search(
+        self, query_vector: EmbeddingVector, *, top_k: int
+    ) -> list[RetrievedChunk]: ...
     async def delete_document(self, document_id: UUID) -> None: ...
+
 
 # application/ports/document_loader.py
 class DocumentLoader(Protocol):
     def can_handle(self, source: DocumentSource) -> bool: ...
-    def load(self, source: DocumentSource) -> LoadedDocument: ...   # sync (CPU-bound)
+    def load(self, source: DocumentSource) -> LoadedDocument: ...  # sync (CPU-bound)
+
 
 # application/ports/cache.py
 class Cache(Protocol):
@@ -619,13 +643,14 @@ class AskCommand:
 
     def __post_init__(self) -> None:
         if not self.question.strip():
-            raise DomainError("question must not be empty")      # fail fast at entry
+            raise DomainError("question must not be empty")  # fail fast at entry
         if not 1 <= self.top_k <= 20:
             raise DomainError("top_k must be between 1 and 20")
 
 
 class AskQuestion:
     """Orchestrates retrieval → prompt construction → generation → citations."""
+
     def __init__(self, retriever: Retriever, chat: ChatModel, prompts: PromptCatalog) -> None:
         self._retriever = retriever
         self._chat = chat
@@ -634,7 +659,7 @@ class AskQuestion:
     async def execute(self, command: AskCommand) -> RagAnswer:
         hits = await self._retriever.retrieve(command.question, top_k=command.top_k)
         if not hits:
-            return RagAnswer.no_context(command.question)        # explicit, tested path
+            return RagAnswer.no_context(command.question)  # explicit, tested path
 
         template = self._prompts.get("rag_answer")
         request = ChatRequest(
@@ -647,8 +672,10 @@ class AskQuestion:
         response = await self._chat.complete(request)
         return RagAnswer(
             text=response.text,
-            citations=[Citation(chunk_id=h.chunk_id, document_id=h.document_id, score=h.score)
-                       for h in hits],
+            citations=[
+                Citation(chunk_id=h.chunk_id, document_id=h.document_id, score=h.score)
+                for h in hits
+            ],
             usage=response.usage,
         )
 ```
@@ -662,7 +689,7 @@ class SimpleRetriever:
         self,
         embeddings: EmbeddingModel,
         store: VectorStore,
-        reranker: Reranker | None = None,      # Null-Object-style optional hook
+        reranker: Reranker | None = None,  # Null-Object-style optional hook
         *,
         candidate_k: int = 20,
     ) -> None: ...
@@ -694,10 +721,11 @@ class SimpleRetriever:
 # adapters/driving/api/app.py
 from contextlib import asynccontextmanager
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    settings = Settings()                    # pydantic-settings: fail fast at boot
-    container = build_container(settings)    # ConfigurationError here = crash at startup (good)
+    settings = Settings()  # pydantic-settings: fail fast at boot
+    container = build_container(settings)  # ConfigurationError here = crash at startup (good)
     await container.startup()
     app.state.container = container
     yield
@@ -710,8 +738,8 @@ def get_ask(request: Request) -> AskQuestion:
 
 @router.post("/ask", response_model=AnswerResponse)
 async def ask(body: AskRequest, use_case: AskQuestion = Depends(get_ask)) -> AnswerResponse:
-    answer = await use_case.execute(body.to_command())    # pydantic → domain DTO
-    return AnswerResponse.from_domain(answer)             # domain → HTTP contract
+    answer = await use_case.execute(body.to_command())  # pydantic → domain DTO
+    return AnswerResponse.from_domain(answer)  # domain → HTTP contract
 ```
 
 Pydantic models live **only** here (boundary validation). Domain stays framework-free.
@@ -723,6 +751,7 @@ Pydantic models live **only** here (boundary validation). Domain stays framework
 ```python
 # src/project5/adapters/driven/llm/openai_chat.py
 """Adapter: OpenAI ChatModel. Translates SDK ↔ canonical types & errors."""
+
 import openai
 from openai import AsyncOpenAI
 
@@ -733,7 +762,7 @@ from project5.domain.models.chat import ChatMessage, TokenUsage
 
 class OpenAiChatModel:
     def __init__(self, client: AsyncOpenAI, info: ModelInfo) -> None:
-        self._client = client          # injected — never constructed internally
+        self._client = client  # injected — never constructed internally
         self.info = info
 
     async def complete(self, request: ChatRequest) -> ChatResponse:
@@ -745,10 +774,11 @@ class OpenAiChatModel:
                 max_tokens=request.max_tokens,
                 response_format=(
                     {"type": "json_schema", "json_schema": {"schema": request.json_schema}}
-                    if request.json_schema else openai.NOT_GIVEN
+                    if request.json_schema
+                    else openai.NOT_GIVEN
                 ),
             )
-        except openai.RateLimitError as exc:            # most specific first!
+        except openai.RateLimitError as exc:  # most specific first!
             raise RateLimitError("openai", str(exc)) from exc
         except openai.APITimeoutError as exc:
             raise ProviderTimeoutError("openai", str(exc)) from exc
@@ -757,7 +787,7 @@ class OpenAiChatModel:
 
         choice = response.choices[0]
         usage = response.usage
-        if usage is None:                               # strict-mode narrowing, no assert
+        if usage is None:  # strict-mode narrowing, no assert
             raise ProviderError("openai", "response missing usage data")
         return ChatResponse(
             text=choice.message.content or "",
@@ -781,11 +811,12 @@ The fake (used in ~95% of tests — fakes beat mocks for readability):
 # adapters/driven/llm/fake_chat.py
 class FakeChatModel:
     """Deterministic ChatModel for unit tests and local dev."""
+
     info = ModelInfo("fake", "fake-1", True, False, 8192)
 
     def __init__(self, reply: str = "ok") -> None:
         self._reply = reply
-        self.calls: list[ChatRequest] = []     # tests assert on recorded calls
+        self.calls: list[ChatRequest] = []  # tests assert on recorded calls
 
     async def complete(self, request: ChatRequest) -> ChatResponse:
         self.calls.append(request)
@@ -830,9 +861,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class LlmSettings(BaseModel):
-    provider: Literal["openai", "anthropic", "ollama"]   # invalid value = instant boot crash
-    api_key: SecretStr                                    # repr → "**********" — leak-proof
-    timeout_s: float = Field(default=30, gt=0)            # safe default, never None
+    provider: Literal["openai", "anthropic", "ollama"]  # invalid value = instant boot crash
+    api_key: SecretStr  # repr → "**********" — leak-proof
+    timeout_s: float = Field(default=30, gt=0)  # safe default, never None
     max_retries: int = Field(default=3, ge=0, le=10)
 
 
@@ -844,7 +875,7 @@ class RagSettings(BaseModel):
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_nested_delimiter="__", extra="ignore")
-    debug: bool = False                                   # debug OFF by default
+    debug: bool = False  # debug OFF by default
     llm: LlmSettings
     rag: RagSettings = RagSettings()
 ```
@@ -866,12 +897,12 @@ class Container:
     ask_question: AskQuestion
     ingest: IngestDocument
 
-    async def startup(self) -> None: ...    # open pools — resource lifecycle lives here
-    async def shutdown(self) -> None: ...   # close them (context-manager discipline)
+    async def startup(self) -> None: ...  # open pools — resource lifecycle lives here
+    async def shutdown(self) -> None: ...  # close them (context-manager discipline)
 
 
 def build_container(settings: Settings) -> Container:
-    chat = CachedChatModel(                            # decorators wrap any ChatModel
+    chat = CachedChatModel(  # decorators wrap any ChatModel
         ResilientChatModel(
             build_chat_model(settings.llm),
             timeout_s=settings.llm.timeout_s,
@@ -885,7 +916,10 @@ def build_container(settings: Settings) -> Container:
     retriever = SimpleRetriever(embeddings, store, candidate_k=settings.rag.top_k * 4)
     prompts = InMemoryPromptCatalog.default()
     return Container(
-        settings=settings, chat=chat, embeddings=embeddings, store=store,
+        settings=settings,
+        chat=chat,
+        embeddings=embeddings,
+        store=store,
         ask_question=AskQuestion(retriever, chat, prompts),
         ingest=IngestDocument(...),
     )
@@ -904,10 +938,11 @@ _CHAT_FACTORIES: dict[str, Callable[[LlmSettings], ChatModel]] = {}
 
 def register_chat(name: str) -> Callable[[ChatFactory], ChatFactory]:
     def decorator(factory: ChatFactory) -> ChatFactory:
-        if name in _CHAT_FACTORIES:                    # fail fast on duplicate
+        if name in _CHAT_FACTORIES:  # fail fast on duplicate
             raise ConfigurationError(f"duplicate chat provider: {name}")
         _CHAT_FACTORIES[name] = factory
         return factory
+
     return decorator
 
 
@@ -940,11 +975,12 @@ _RETRYABLE = (RateLimitError, ProviderTimeoutError, ProviderUnavailableError)
 
 class ResilientChatModel:
     """Timeout + exponential backoff around ANY ChatModel."""
+
     def __init__(self, inner: ChatModel, *, timeout_s: float = 30, max_attempts: int = 3) -> None:
         self._inner = inner
         self._timeout_s = timeout_s
         self._max_attempts = max_attempts
-        self.info = inner.info                        # capabilities pass through
+        self.info = inner.info  # capabilities pass through
 
     async def complete(self, request: ChatRequest) -> ChatResponse:
         async with asyncio.timeout(self._timeout_s):
@@ -959,12 +995,13 @@ class ResilientChatModel:
 
 class CachedChatModel:
     """Caches deterministic requests only — temperature > 0 must NEVER be cached."""
+
     def __init__(self, inner: ChatModel, cache: Cache, *, ttl_s: int = 3600) -> None: ...
     async def complete(self, request: ChatRequest) -> ChatResponse:
         if request.temperature > 0:
             return await self._inner.complete(request)
-        key = _cache_key(request)                     # sha256 over canonical request
-        ...                                           # get → miss → call → set
+        key = _cache_key(request)  # sha256 over canonical request
+        ...  # get → miss → call → set
 ```
 
 **Circuit breaker** (same decorator shape — sketch; harden or use `aiobreaker` in prod):
@@ -1083,8 +1120,7 @@ CI runs these against `respx`-mocked HTTP (deterministic, no keys). A nightly jo
 ### 12.3 Fakes over mocks
 
 ```python
-class FakeChatModel:
-    ...  # records self.calls — tests assert on real interactions
+class FakeChatModel: ...  # records self.calls — tests assert on real interactions
 ```
 
 `assert fake.calls[0].messages[0].content == "..."` reads better than mock frameworks, works with pyright, and doubles as dev tooling (wire fakes via config for local runs without API keys).

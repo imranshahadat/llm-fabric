@@ -33,8 +33,11 @@ help:
 	@echo ""
 	@echo "DAILY WORKFLOW:"
 	@echo "  make run                  Start the application ($(ENTRY))"
-	@echo "  make test                 Run the full test suite"
+	@echo "  make format               Format code and fix lint issues with Ruff"
+	@echo "  make lint                 Check formatting and lint rules with Ruff"
 	@echo "  make pyright              Run static type checking (Strict Mode)"
+	@echo "  make test                 Run the full test suite"
+	@echo "  make check                Run format check, lint, pyright, and tests"
 	@echo ""
 	@echo "UTILITIES:"
 	@echo "  make add PKG=openai       Add a dependency"
@@ -107,11 +110,21 @@ setup: check-project
 # Execution & QA
 # _____________________________________________________________________________
 
-.PHONY: run pyright test verify vscode-settings vscode
+.PHONY: run format lint pyright test check verify vscode-settings vscode
 
 # Run main application entry point
 run: check-env
 	cd "$(PROJECT_DIR)" && $(UV) run python "$(ENTRY)"
+
+# Format code and auto-fix lint issues with Ruff
+format: check-env
+	@echo "Formatting code with Ruff..."
+	cd "$(PROJECT_DIR)" && $(UV) run ruff check --fix . && $(UV) run ruff format .
+
+# Verify formatting and lint rules without modifying files
+lint: check-env
+	@echo "Checking lint and formatting with Ruff..."
+	cd "$(PROJECT_DIR)" && $(UV) run ruff check . && $(UV) run ruff format --check .
 
 # Check static types
 pyright: check-env
@@ -122,6 +135,9 @@ pyright: check-env
 test: check-env
 	@echo "Running Test Suite..."
 	cd "$(PROJECT_DIR)" && $(UV) run pytest tests/ -v
+
+# Run all quality checks in sequence
+check: lint pyright test
 
 # Print active Python path and version
 verify: check-env
