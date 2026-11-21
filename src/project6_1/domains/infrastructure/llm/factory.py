@@ -11,9 +11,8 @@ from ....core.exceptions.llm import LLMProviderError
 from ...interfaces.llm.base import BaseLLM
 from ._builder import build_provider
 
-# from app.domains.infrastructure.llm.anthropic_chat import AnthropicLLM
 # from app.domains.infrastructure.llm.fake_chat import FakeLLM
-from .gemini_chat import GeminiLLM
+from .gemini_chat import GeminiChatModel
 
 # Provider name -> adapter class. Keys MUST cover every literal in
 # :class:`LLMProviderEnum` so the config can never ask for a provider we
@@ -21,9 +20,8 @@ from .gemini_chat import GeminiLLM
 LLM_REGISTRY: dict[str, type[BaseLLM]] = {
     # "fake": FakeLLM,
     # "openai": OpenAILLM,
-    # "anthropic": AnthropicLLM,
     # "openrouter": OpenRouterLLM,
-    "gemini": GeminiLLM,
+    "gemini": GeminiChatModel,
     # "vercel": VercelLLM,
 }
 
@@ -31,7 +29,6 @@ LLM_REGISTRY: dict[str, type[BaseLLM]] = {
 # Providers that need NO key (e.g. the fake adapter) are absent from this map.
 API_KEY_REQUIREMENTS: dict[str, str] = {
     "openai": "openai_api_key",
-    "anthropic": "anthropic_api_key",
     "openrouter": "openrouter_api_key",
     "gemini": "gemini_api_key",
     "vercel": "vercel_api_key",

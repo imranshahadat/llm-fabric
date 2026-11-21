@@ -26,6 +26,12 @@ class BaseLangChainLLM(BaseLLM):
         self._model_name = self._resolve_model_name()
         self._log = get_logger().bind(provider=self.PROVIDER, model=self._model_name)
 
+
+    @abstractmethod
+    def _get_configured_model_name(self) -> str:
+        """Return the configured model name, or fall back to the provider default."""
+        raise NotImplementedError    
+
     @abstractmethod
     def _generate(self, messages: list[Message]) -> str:
         """Call the specific LLM provider and return the text response."""

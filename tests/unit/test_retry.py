@@ -33,7 +33,7 @@ async def test_retry_succeeds_after_connection_error() -> None:
         nonlocal attempts
         attempts += 1
         if attempts == 1:
-            raise LLMConnectionError("Connection reset", provider="anthropic")
+            raise LLMConnectionError("Connection reset", provider="gemini")
         return "recovered"
 
     result = await with_retry(call_llm, max_attempts=2, base_delay=0.01, max_delay=0.02)

@@ -72,4 +72,8 @@ addopts = "-ra --strict-markers"
 filterwarnings = ["error::DeprecationWarning:project6_1.*"]
 
 [dependency-groups]
-dev = ["pytest>=9.2.0"]
+dev = [
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.5.0",
+    "pytest-cov>=7.1.0",
+]

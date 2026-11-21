@@ -19,7 +19,7 @@ class _Base(BaseSettings):
     """Base settings class that loads variables from .env."""
 
     model_config = SettingsConfigDict(
-        env_file=str(ENV_FILE),
+        env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -32,11 +32,21 @@ class LLMProviderEnum(StrEnum):
     OPENAI = "openai"
     OPENROUTER = "openrouter"
     GEMINI = "gemini"
+    COHERE= "cohere"
     VERCEL = "vercel"
+
 
 
 class AppSettings(_Base):
     """All LLM settings and provider credentials."""
+
+
+    #------ embed selction ------
+
+
+    embed_provider: LLMProviderEnum = Field(
+    default=LLMProviderEnum.GEMINI, validation_alias="EMBED_PROVIDER"
+    )
 
     # ---- LLM selection ----
     llm_provider: LLMProviderEnum = Field(
@@ -72,6 +82,9 @@ class AppSettings(_Base):
     # ---- Google Gemini ----
     gemini_api_key: SecretStr | None = Field(default=None, validation_alias="GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-1.5-flash", validation_alias="GEMINI_MODEL")
+    gemini_embedding_model: str = Field(
+        default="gemini-embedding-001", validation_alias="GEMINI_EMBEDDING_MODEL"
+    )
 
     # ---- Vercel AI Gateway (OpenAI-compatible) ----
     vercel_api_key: SecretStr | None = Field(default=None, validation_alias="VERCEL_API_KEY")
@@ -79,6 +92,9 @@ class AppSettings(_Base):
         default="https://ai-gateway.vercel.sh/v1", validation_alias="VERCEL_BASE_URL"
     )
     vercel_model: str = Field(default="openai/gpt-4o-mini", validation_alias="VERCEL_MODEL")
+    vercel_embedding_model: str = Field(
+        default="text-embedding-3-small", validation_alias="VERCEL_EMBEDDING_MODEL"
+    )
     # ----- Cohere -----
     cohere_api_key: SecretStr | None = Field(default=None, validation_alias="COHERE_API_KEY")
     co_api_url: str = Field(default="https://api.cohere.com/v2", validation_alias="CO_API_URL")

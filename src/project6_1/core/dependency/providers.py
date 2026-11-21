@@ -24,6 +24,7 @@ DEFAULT_BASE_URLS: dict[LLMProviderEnum, str] = {
     LLMProviderEnum.OPENROUTER: "https://openrouter.ai/api/v1",
     LLMProviderEnum.GEMINI: "",
     LLMProviderEnum.VERCEL: "https://ai-gateway.vercel.sh/v1",
+    LLMProviderEnum.COHERE: "https://api.cohere.com/v2",
 }
 
 # Per-provider default model identifiers; same values as the corresponding
@@ -34,6 +35,7 @@ DEFAULT_MODELS: dict[LLMProviderEnum, str] = {
     LLMProviderEnum.OPENROUTER: "openai/gpt-4o-mini",
     LLMProviderEnum.GEMINI: "gemini-1.5-flash",
     LLMProviderEnum.VERCEL: "openai/gpt-4o-mini",
+    LLMProviderEnum.COHERE: "command-r-plus",
 }
 
 
