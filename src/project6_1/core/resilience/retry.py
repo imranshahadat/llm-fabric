@@ -38,7 +38,7 @@ def _create_retry_decorator(
             exp_base=2,
         ),
         retry=retry_if_exception_type(retryable),
-        # if need authh error as well use this fil hal is ko commit kia hai error hai rha tha 
+        # if need authh error as well use this fil hal is ko commit kia hai error hai rha tha
         # ya wala error tha is ko use krny sy tests/unit/test_retry.py:59: AssertionError
         # retry=retry_if_exception_type(Exception),
         # Raise the real LLM error when retries run out instead of Tenacity's
@@ -64,4 +64,6 @@ async def with_retry[T](
     )
 
     return await retryer(fn)
+
+
 # @retry(stop=stop_after_attempt(max_attempts), retry=retry_if_exception_type(retryable))

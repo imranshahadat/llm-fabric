@@ -50,7 +50,7 @@ def main() -> int:
         print(f"  Dimension:  {len(vector)}")
         print(f"  First 5:    {vector[:5]}")
         print(f"  All floats: {all(isinstance(v, float) for v in vector)}")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"  FAILED: {type(exc).__name__}: {exc}")
         return 1
 
@@ -59,13 +59,13 @@ def main() -> int:
     # ---- Chat check ----
     print("[2/2] Calling Gemini CHAT API...")
     try:
-        response = asyncio.run(_verify_chat(
-            f"Reply with exactly one short sentence about: {text!r}"
-        ))
+        response = asyncio.run(
+            _verify_chat(f"Reply with exactly one short sentence about: {text!r}")
+        )
         print("  SUCCESS")
         print(f"  Response:   {response!r}")
         print(f"  Length:     {len(response)} chars")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"  FAILED: {type(exc).__name__}: {exc}")
         return 1
 

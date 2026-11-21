@@ -14,7 +14,7 @@ from ....core.exceptions.llm import (
     LLMRateLimitError,
     LLMResponseParseError,
 )
-from ...interfaces.llm.base import Message 
+from ...interfaces.llm.base import Message
 from ._base import BaseLangChainLLM
 
 
@@ -50,8 +50,7 @@ class GeminiChatModel(BaseLangChainLLM):
 
         # Convert Message objects to ChatMessage dicts
         chat_messages: list[ChatMessage] = [
-            {"role": msg["role"], "content": msg["content"]} 
-            for msg in messages
+            {"role": msg["role"], "content": msg["content"]} for msg in messages
         ]
         langchain_messages = [_convert_message_to_langchain(msg) for msg in chat_messages]
 

@@ -32,20 +32,17 @@ class LLMProviderEnum(StrEnum):
     OPENAI = "openai"
     OPENROUTER = "openrouter"
     GEMINI = "gemini"
-    COHERE= "cohere"
+    COHERE = "cohere"
     VERCEL = "vercel"
-
 
 
 class AppSettings(_Base):
     """All LLM settings and provider credentials."""
 
-
-    #------ embed selction ------
-
+    # ------ embed selction ------
 
     embed_provider: LLMProviderEnum = Field(
-    default=LLMProviderEnum.GEMINI, validation_alias="EMBED_PROVIDER"
+        default=LLMProviderEnum.GEMINI, validation_alias="EMBED_PROVIDER"
     )
 
     # ---- LLM selection ----
@@ -98,8 +95,13 @@ class AppSettings(_Base):
     # ----- Cohere -----
     cohere_api_key: SecretStr | None = Field(default=None, validation_alias="COHERE_API_KEY")
     co_api_url: str = Field(default="https://api.cohere.com/v2", validation_alias="CO_API_URL")
-    cohere_embed_models: str = Field(default="embed-v5.0-fast", validation_alias="COHERE_EMBED_MODELS")
-    cohere_rerank_models: str = Field(default="rerank-v5.0-fast", validation_alias="COHERE_RERANK_MODELS")
+    cohere_embed_models: str = Field(
+        default="embed-v5.0-fast", validation_alias="COHERE_EMBED_MODELS"
+    )
+    cohere_rerank_models: str = Field(
+        default="rerank-v5.0-fast", validation_alias="COHERE_RERANK_MODELS"
+    )
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> AppSettings:

@@ -48,7 +48,7 @@ class TestAppSettingsWithValues:
 
     def test_can_set_gemini_api_key(self) -> None:
         """Should accept a string API key and wrap it in SecretStr."""
-        settings = AppSettings(gemini_api_key="test-key-123")
+        settings = AppSettings(gemini_api_key="test-key-123")  # type: ignore[arg-type]
         assert isinstance(settings.gemini_api_key, SecretStr)
         assert settings.gemini_api_key.get_secret_value() == "test-key-123"
 
@@ -96,7 +96,6 @@ class TestGetSettings:
 
     def test_reset_settings_cache_clears_cache(self) -> None:
         """reset_settings_cache should allow creating a new instance."""
-        s1 = get_settings()
         reset_settings_cache()
         s2 = get_settings()
         # After reset, they might be different instances

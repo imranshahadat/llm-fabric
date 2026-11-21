@@ -95,10 +95,7 @@ def _convert_provider_exception(
     if "400" in error_message_lower or "invalid" in exception_class_name.lower():
         return LLMInvalidRequestError(raw_error_message, provider=provider_name)
 
-    if (
-        "timeout" in exception_class_name.lower()
-        or "connection" in exception_class_name.lower()
-    ):
+    if "timeout" in exception_class_name.lower() or "connection" in exception_class_name.lower():
         return LLMConnectionError(raw_error_message, provider=provider_name)
 
     return LLMError(raw_error_message, provider=provider_name)

@@ -4,8 +4,6 @@ import asyncio
 import sys
 from pathlib import Path
 
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
 # Make src/ importable when the script is run from the project root.
 _SRC: Path = Path(__file__).resolve().parent / "src"
 if str(_SRC) not in sys.path:
@@ -32,7 +30,7 @@ def main() -> int:
 
     try:
         vector: list[float] = asyncio.run(_get_embedding(text))
-    except Exception as exc:  # noqa: BLE001 — we want to print any failure
+    except Exception as exc:
         print(f"\nFAILED: {type(exc).__name__}: {exc}")
         return 1
 

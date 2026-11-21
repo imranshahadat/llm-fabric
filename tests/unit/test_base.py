@@ -6,17 +6,19 @@ import asyncio
 
 import pytest
 
+# tests/unit/_helpers.py
+from pydantic import SecretStr
+
 from project6_1.core.config.settings import AppSettings
 from project6_1.core.exceptions.llm import LLMRateLimitError
 from project6_1.domains.infrastructure.embed._base import BaseLangChainEmbed
 from project6_1.domains.interfaces.embed.base import EmbedRequest
 
-# tests/unit/_helpers.py
-from pydantic import SecretStr
 
 def secret(value: str = "test-key") -> SecretStr:
     """Wrap a literal as SecretStr so type checkers stop complaining in tests."""
     return SecretStr(value)
+
 
 class ConcreteEmbedModel(BaseLangChainEmbed):
     """Concrete implementation for testing."""
@@ -45,7 +47,7 @@ class TestBaseLangChainEmbed:
     def test_initialization(self) -> None:
         """Should initialize with settings."""
         settings = AppSettings(
-            gemini_api_key="test-key", # type: ignore[arg-type]
+            gemini_api_key="test-key",  # type: ignore[arg-type]
             gemini_embedding_model="test-model",
         )
         adapter = ConcreteEmbedModel(settings)
@@ -53,7 +55,7 @@ class TestBaseLangChainEmbed:
 
     def test_generate_embedding_returns_list_of_floats(self) -> None:
         """generate_embedding should return a list of floats."""
-        settings = AppSettings(gemini_api_key="test-key") # type: ignore[arg-type]
+        settings = AppSettings(gemini_api_key="test-key")  # type: ignore[arg-type]
         adapter = ConcreteEmbedModel(settings)
 
         vector = asyncio.run(adapter.generate_embedding({"text": "hello"}))
@@ -65,7 +67,7 @@ class TestBaseLangChainEmbed:
 
     def test_generate_embedding_logs_latency(self) -> None:
         """Should log latency on successful call."""
-        settings = AppSettings(gemini_api_key="test-key") # type: ignore[arg-type]
+        settings = AppSettings(gemini_api_key="test-key")  # type: ignore[arg-type]
         adapter = ConcreteEmbedModel(settings)
 
         vector = asyncio.run(adapter.generate_embedding({"text": "test"}))
@@ -73,7 +75,7 @@ class TestBaseLangChainEmbed:
 
     def test_generate_embedding_with_empty_text(self) -> None:
         """Should handle empty text."""
-        settings = AppSettings(gemini_api_key="test-key") # type: ignore[arg-type]
+        settings = AppSettings(gemini_api_key="test-key")  # type: ignore[arg-type]
         adapter = ConcreteEmbedModel(settings)
 
         vector = asyncio.run(adapter.generate_embedding({"text": ""}))
@@ -83,7 +85,7 @@ class TestBaseLangChainEmbed:
 
     def test_generate_embedding_with_long_text(self) -> None:
         """Should handle long text."""
-        settings = AppSettings(gemini_api_key="test-key") # type: ignore[arg-type]
+        settings = AppSettings(gemini_api_key="test-key")  # type: ignore[arg-type]
         adapter = ConcreteEmbedModel(settings)
 
         long_text = "a" * 1000
@@ -95,7 +97,7 @@ class TestBaseLangChainEmbed:
     @pytest.mark.asyncio
     async def test_generate_embedding_is_async(self) -> None:
         """generate_embedding should be an async method."""
-        settings = AppSettings(gemini_api_key="test-key") # type: ignore[arg-type]
+        settings = AppSettings(gemini_api_key="test-key")  # type: ignore[arg-type]
         adapter = ConcreteEmbedModel(settings)
 
         coro = adapter.generate_embedding({"text": "test"})
@@ -119,7 +121,7 @@ class TestBaseLangChainEmbed:
                 return [1.0, 2.0, 3.0]
 
         settings = AppSettings(
-            gemini_api_key="test-key", # type: ignore[arg-type]
+            gemini_api_key="test-key",  # type: ignore[arg-type]
             llm_max_retries=3,
         )
         adapter = FailingEmbedModel(settings)
@@ -140,7 +142,7 @@ class TestBaseLangChainEmbed:
                 raise LLMRateLimitError("Always fails", provider="test")
 
         settings = AppSettings(
-            gemini_api_key="test-key", # type: ignore[arg-type]
+            gemini_api_key="test-key",  # type: ignore[arg-type]
             llm_max_retries=2,
         )
         adapter = AlwaysFailingEmbedModel(settings)

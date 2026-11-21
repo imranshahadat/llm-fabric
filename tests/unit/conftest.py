@@ -17,7 +17,7 @@ if str(SRC_DIR) not in sys.path:
 def reset_settings_cache():
     """Reset settings cache before each test to avoid cross-test contamination."""
     from project6_1.core.config.settings import reset_settings_cache as reset
-    
+
     reset()
     yield
     reset()

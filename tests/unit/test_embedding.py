@@ -15,7 +15,6 @@ import types
 from project6_1.core.config.settings import AppSettings, LLMProviderEnum
 from project6_1.domains.infrastructure.embed.gemini_embed import GeminiEmbeddingModel
 
-
 # ── Fake Google SDK ─────────────────────────────────────────────────────
 # This class pretends to be GoogleGenerativeAIEmbeddings.
 # Instead of calling Google, it returns a small test vector.
@@ -35,7 +34,7 @@ class _StubEmbeddings:
 def _install_stub_sdk() -> None:
     """Put the fake SDK into sys.modules so the import finds it."""
     module: types.ModuleType = types.ModuleType("langchain_google_genai")
-    setattr(module, "GoogleGenerativeAIEmbeddings", _StubEmbeddings)
+    module.GoogleGenerativeAIEmbeddings = _StubEmbeddings  # type: ignore[arg-type]
     sys.modules["langchain_google_genai"] = module
 
 
@@ -51,7 +50,7 @@ def test_generate_embedding_returns_float_vector() -> None:
     """generate_embedding should return a list of float numbers."""
     # Set up test settings. The API key is fake — no real key needed.
     settings: AppSettings = AppSettings(
-        gemini_api_key="test-key-not-real",
+        gemini_api_key="test-key-not-real",  # type: ignore[arg-type]
         gemini_embedding_model="gemini-embedding-001",
         embed_provider=LLMProviderEnum.GEMINI,
         llm_provider=LLMProviderEnum.GEMINI,
@@ -64,9 +63,7 @@ def test_generate_embedding_returns_float_vector() -> None:
         adapter: GeminiEmbeddingModel = GeminiEmbeddingModel(settings)
 
         # "hello" has 5 letters, so the fake returns [5.0, 0.1, 0.2, 0.3].
-        vector: list[float] = asyncio.run(
-            adapter.generate_embedding({"text": "hello"})
-        )
+        vector: list[float] = asyncio.run(adapter.generate_embedding({"text": "hello"}))
     finally:
         # Always clean up so the fake does not leak into other tests.
         _remove_stub_sdk()

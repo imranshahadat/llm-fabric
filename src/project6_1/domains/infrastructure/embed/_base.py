@@ -10,8 +10,8 @@ import asyncio
 import time
 from abc import abstractmethod
 
-from ....core.logging.setup import get_logger
 from ....core.config.settings import AppSettings
+from ....core.logging.setup import get_logger
 from ....core.resilience.retry import with_retry
 from ...interfaces.embed.base import BaseEmbed, EmbedRequest
 
@@ -46,7 +46,9 @@ class BaseLangChainEmbed(BaseEmbed):
             return await asyncio.to_thread(self._generate_embedding_sync, request)
 
         try:
-            return await with_retry(_call_with_retry, max_attempts=max(1, self._settings.llm_max_retries))
+            return await with_retry(
+                _call_with_retry, max_attempts=max(1, self._settings.llm_max_retries)
+            )
         except Exception as exc:
             error = exc
             raise

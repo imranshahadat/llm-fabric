@@ -13,20 +13,20 @@ from project6_1.domains.infrastructure.llm.factory import build_llm
 
 async def test_gemini_chat() -> None:
     settings = get_settings()
-    
+
     print("-" * 60)
     print("[2/2] Calling Gemini CHAT API...")
     print(f"  Provider:   {settings.llm_provider.value}")
     print(f"  Model:      {settings.gemini_model}")
-    
+
     llm = build_llm(settings)
-    
+
     # MUST use await here
-    response = await llm.generate([
-        {"role": "user", "content": "The quick brown fox jumps over the lazy dog."}
-    ])
-    
-    print(f"  SUCCESS")
+    response = await llm.generate(
+        [{"role": "user", "content": "The quick brown fox jumps over the lazy dog."}]
+    )
+
+    print("  SUCCESS")
     print(f"  Response:   {response[:200]}")
 
 
@@ -38,6 +38,7 @@ def main() -> int:
     except Exception as exc:
         print(f"  FAILED: {type(exc).__name__}: {exc}")
         import traceback
+
         traceback.print_exc()
         return 1
 
