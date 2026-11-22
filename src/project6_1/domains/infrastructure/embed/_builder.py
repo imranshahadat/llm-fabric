@@ -23,7 +23,7 @@ def _get_nested_attribute(target_object: Any, dotted_attribute_path: str) -> Any
     return current_object
 
 
-def build_provider_adapter(
+def build_provider_adapter[T](
     *,
     provider_registry: Mapping[str, Callable[[AppSettings], T]],
     provider_name: str,

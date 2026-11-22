@@ -39,6 +39,12 @@ class LLMProviderEnum(StrEnum):
 class AppSettings(_Base):
     """All LLM settings and provider credentials."""
 
+    # ---- Reranker selection ----
+    rerank_provider: LLMProviderEnum = Field(
+        default=LLMProviderEnum.COHERE, validation_alias="RERANKER_PROVIDER"
+    )
+    rerank_top_k: int = Field(default=4, validation_alias="RERANK_TOP_K")
+
     # ------ embed selction ------
 
     embed_provider: LLMProviderEnum = Field(
@@ -75,6 +81,10 @@ class AppSettings(_Base):
         default="https://example.com", validation_alias="OPENROUTER_SITE_URL"
     )
     openrouter_app_name: str = Field(default="project6-1", validation_alias="OPENROUTER_APP_NAME")
+    openrouter_embedding_model: str = Field(
+        default="openai/text-embedding-3-small",
+        validation_alias="OPENROUTER_EMBED_MODEL",
+    )
 
     # ---- Google Gemini ----
     gemini_api_key: SecretStr | None = Field(default=None, validation_alias="GEMINI_API_KEY")

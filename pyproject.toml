@@ -23,6 +23,7 @@ anthropic = ["langchain-anthropic>=0.2", "anthropic>=0.40"]
 gemini = ["langchain-google-genai>=2.0", "google-generativeai>=0.8"]
 openrouter = ["langchain-openai>=0.2", "openai>=1.50"]
 vercel_ai = ["langchain-openai>=0.2", "openai>=1.50"]
+cohere = ["langchain-cohere>=0.3.0"]
 all = [
     "langchain-openai>=0.2",
     "langchain-anthropic>=0.2",
@@ -67,10 +68,10 @@ reportMissingImports = "warning"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["injection/tests"]
 addopts = "-ra --strict-markers"
 filterwarnings = ["error::DeprecationWarning:project6_1.*"]
-
+testpaths = ["tests"]
+asyncio_default_fixture_loop_scope = "function"
 [dependency-groups]
 dev = [
     "pyright>=1.1.414",

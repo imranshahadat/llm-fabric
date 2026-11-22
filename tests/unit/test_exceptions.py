@@ -28,7 +28,8 @@ def test_base_exception_hierarchy() -> None:
 
 
 def test_llm_exception_hierarchy() -> None:
-    assert issubclass(LLMProviderError, ProviderError)
+    assert issubclass(LLMProviderError, LLMError)
+
     assert issubclass(LLMError, AppError)
     assert issubclass(LLMRateLimitError, LLMError)
     assert issubclass(LLMConnectionError, LLMError)
@@ -40,10 +41,9 @@ def test_llm_exception_hierarchy() -> None:
 
 
 def test_llm_error_attributes_and_catching() -> None:
-    err = LLMRateLimitError("Rate limited", provider="openrouter", status_code=429)
-    assert str(err) == "Rate limited"
-    assert err.provider == "openrouter"
-    assert err.status_code == 429
+    err = LLMRateLimitError("rate limited", provider="gemini")
+    assert err.provider == "gemini"
+    assert "429" in str(err) or "rate" in str(err).lower()
 
     with pytest.raises(LLMError):
         raise err

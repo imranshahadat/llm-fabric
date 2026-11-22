@@ -27,9 +27,11 @@ class TestGeminiEmbeddingModelInitialization:
         # This is independent of whether the real package or a stub is installed.
         settings = AppSettings(gemini_api_key=secret())
 
-        with mock.patch.dict(sys.modules, {"langchain_google_genai": None}):
-            with pytest.raises(LLMError) as exc_info:
-                GeminiEmbeddingModel(settings)
+        with (
+            mock.patch.dict(sys.modules, {"langchain_google_genai": None}),
+            pytest.raises(LLMError) as exc_info,
+        ):
+            GeminiEmbeddingModel(settings)
 
         message = str(exc_info.value).lower()
         assert "langchain-google-genai" in message

@@ -16,8 +16,8 @@ from ..exceptions.llm import LLMConnectionError, LLMError, LLMRateLimitError
 
 T = TypeVar("T")
 
-# Only retry errors that might succeed on a later try (rate limits and network
-# drops). Do not retry auth errors or bad requests—repeating them will just fail
+# retry errors that might succeed on a later try (rate limits and network
+# drops).not trying this for the auth errors or bad requests—repeating  fail
 # again and waste quota.
 _RETRYABLE: tuple[type[LLMError], ...] = (LLMRateLimitError, LLMConnectionError)
 

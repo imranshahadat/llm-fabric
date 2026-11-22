@@ -5,8 +5,6 @@ from __future__ import annotations
 from ....core.config.settings import AppSettings, get_settings
 from ....core.exceptions.llm import LLMProviderError
 
-# from app.domains.infrastructure.llm.openai_chat import OpenAILLM
-# from app.domains.infrastructure.llm.openrouter_chat import OpenRouterLLM
 # from app.domains.infrastructure.llm.vercel_chat import VercelLLM
 from ...interfaces.llm.base import BaseLLM
 from ._builder import build_provider
@@ -14,13 +12,16 @@ from ._builder import build_provider
 # from app.domains.infrastructure.llm.fake_chat import FakeLLM
 from .gemini_chat import GeminiChatModel
 
+# from app.domains.infrastructure.llm.openai_chat import OpenAILLM
+from .openrouter_chat import OpenRouterLLM
+
 # Provider name -> adapter class. Keys MUST cover every literal in
 # :class:`LLMProviderEnum` so the config can never ask for a provider we
 # can't build.
 LLM_REGISTRY: dict[str, type[BaseLLM]] = {
     # "fake": FakeLLM,
     # "openai": OpenAILLM,
-    # "openrouter": OpenRouterLLM,
+    "openrouter": OpenRouterLLM,
     "gemini": GeminiChatModel,
     # "vercel": VercelLLM,
 }

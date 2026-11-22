@@ -23,6 +23,7 @@ class BaseLangChainLLM(BaseLLM):
 
     def __init__(self, settings: AppSettings) -> None:
         self._settings = settings
+        self._model_name = self._get_configured_model_name()
         self._model_name = self._resolve_model_name()
         self._log = get_logger().bind(provider=self.PROVIDER, model=self._model_name)
 
@@ -44,9 +45,13 @@ class BaseLangChainLLM(BaseLLM):
         """Generate a response from the LLM with automatic retries and latency logging."""
         started = time.perf_counter()
         error: Exception | None = None
+
+        async def _call_with_retry() -> str:
+            return await self._async_wrap(messages)
+
         try:
             text = await with_retry(
-                lambda: self._async_wrap(messages),
+                _call_with_retry,
                 max_attempts=max(1, self._settings.llm_max_retries),
             )
             return text

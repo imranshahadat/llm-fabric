@@ -51,6 +51,7 @@ coverage.xml
 .pytest_cache/
 cover/
 
+run.sh
 # Translations
 *.mo
 *.pot
@@ -220,3 +221,4 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+.run.sh
