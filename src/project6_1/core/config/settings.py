@@ -51,6 +51,9 @@ class AppSettings(_Base):
         default=LLMProviderEnum.GEMINI, validation_alias="EMBED_PROVIDER"
     )
 
+    # ---- Vector Database Selection ----
+    vector_store_provider: str = Field(default="qdrant", validation_alias="VECTOR_STORE_PROVIDER")
+
     # ---- LLM selection ----
     llm_provider: LLMProviderEnum = Field(
         default=LLMProviderEnum.GEMINI, validation_alias="LLM_PROVIDER"
@@ -110,6 +113,26 @@ class AppSettings(_Base):
     )
     cohere_rerank_models: str = Field(
         default="rerank-v5.0-fast", validation_alias="COHERE_RERANK_MODELS"
+    )
+
+    # ---- Qdrant ----
+
+    # Vector Store
+    qdrant_url: str = Field(default="http://localhost:6333", validation_alias="QDRANT_URL")
+    qdrant_api_key: SecretStr | None = Field(default=None, validation_alias="QDRANT_API_KEY")
+    qdrant_collection_name: str = Field(
+        default="rag-knowledge-base", validation_alias="QDRANT_COLLECTION"
+    )
+    qdrant_vector_size: int = Field(default=1024, validation_alias="QDRANT_DIMENSION")
+
+    # Hybrid Search
+    use_hybrid_search: bool = Field(default=True, validation_alias="USE_HYBRID_SEARCH")
+    hybrid_fetch_k: int = Field(default=20, validation_alias="HYBRID_FETCH_K")
+
+    # ---- Pinecone (alternative) ----
+    pinecone_api_key: SecretStr | None = Field(default=None, validation_alias="PINECONE_API_KEY")
+    pinecone_index_name: str = Field(
+        default="rag-knowledge-base", validation_alias="PINECONE_INDEX_NAME"
     )
 
 
