@@ -40,5 +40,6 @@ def main() -> int:
     print(f"  All floats: {all(isinstance(v, float) for v in vector)}")
     return 0
 
+
 if __name__ == "__main__":
     raise SystemExit(main())
