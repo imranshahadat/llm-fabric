@@ -135,6 +135,18 @@ class AppSettings(_Base):
         default="rag-knowledge-base", validation_alias="PINECONE_INDEX_NAME"
     )
 
+    # ---- Ingestion (upload / load / split) ----
+    ingest_upload_dir: str = Field(default="uploads", validation_alias="INGEST_UPLOAD_DIR")
+    ingest_max_file_mb: int = Field(default=100, validation_alias="INGEST_MAX_FILE_MB")
+    ingest_chunk_size: int = Field(default=1200, validation_alias="INGEST_CHUNK_SIZE")
+    ingest_chunk_overlap: int = Field(default=200, validation_alias="INGEST_CHUNK_OVERLAP")
+    ingest_enable_ocr: bool = Field(default=True, validation_alias="INGEST_ENABLE_OCR")
+    ingest_ocr_language: str = Field(default="eng", validation_alias="INGEST_OCR_LANGUAGE")
+    ingest_ocr_dpi: int = Field(default=200, validation_alias="INGEST_OCR_DPI")
+    ingest_pdf_extract_images: bool = Field(
+        default=True, validation_alias="INGEST_PDF_EXTRACT_IMAGES"
+    )
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> AppSettings:

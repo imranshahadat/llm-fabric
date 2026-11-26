@@ -5,6 +5,7 @@ description = "Project6 — Enterprise-Grade LLM & RAG Application (LLM integrat
 readme = "README.md"
 authors = [{ name = "imranshahadat", email = "imranali.13imran@gmail.com" }]
 requires-python = ">=3.12"
+
 dependencies = [
     "pydantic>=2.7",
     "pydantic-settings>=2.4",
@@ -18,25 +19,38 @@ dependencies = [
     "qdrant-client>=1.20.0",
     "cohere>=5.21.1",
     "langchain-cohere>=0.3.0",
+    "pymupdf>=1.26,<2",
+    "python-docx>=1.2.0",
+    "pytesseract>=0.3.13",
+    "pillow>=13.0.0",
 ]
 
 [project.optional-dependencies]
-openai = ["langchain-openai>=0.2", "openai>=1.50"]
+openai = ["langchain-openai>=1.8.3", "openai>=1.50"]
+
 anthropic = ["langchain-anthropic>=0.2", "anthropic>=0.40"]
-gemini = ["langchain-google-genai>=2.0", "google-generativeai>=0.8"]
-openrouter = ["langchain-openai>=0.2", "openai>=1.50"]
-vercel_ai = ["langchain-openai>=0.2", "openai>=1.50"]
-cohere = ["langchain-cohere>=0.3.0"]
+
+gemini = ["langchain-google-genai>=4.5.1", "google-generativeai>=0.8"]
+
+openrouter = ["langchain-openai>=1.8.3", "openai>=1.50"]
+
+vercel_ai = ["langchain-openai>=1.8.3", "openai>=1.50"]
+
+cohere = ["langchain-cohere>=0.3.0", "cohere>=5.21.1"]
+
 qdrant = ["qdrant-client>=1.20.0"]
+
 all = [
-    "langchain-openai>=0.2",
+    "langchain-openai>=1.8.3",
     "langchain-anthropic>=0.2",
-    "langchain-google-genai>=2.0",
+    "langchain-google-genai>=4.5.1",
     "openai>=1.50",
     "anthropic>=0.40",
     "google-generativeai>=0.8",
+    "cohere>=5.21.1",
+    "langchain-cohere>=0.3.0",
+    "qdrant-client>=1.20.0",
 ]
-dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.6", "pyright>=1.1.380"]
 
 [project.scripts]
 project6-1 = "project6_1:main"
@@ -76,6 +90,7 @@ addopts = "-ra --strict-markers"
 filterwarnings = ["error::DeprecationWarning:project6_1.*"]
 testpaths = ["tests"]
 asyncio_default_fixture_loop_scope = "function"
+
 [dependency-groups]
 dev = [
     "pyright>=1.1.414",

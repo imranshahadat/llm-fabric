@@ -175,6 +175,6 @@ add: check-env
 	cd "$(PROJECT_DIR)" && $(UV) add $(PKG)
 
 # Uninstall a package
-remove: check-env
-	@test -n "$(PKG)" || (echo "Usage: make remove PKG=requests"; exit 1)
-	cd "$(PROJECT_DIR)" && $(UV) remove $(PKG)
+# remove: check-env
+# 	@test -n "$(PKG)" || (echo "Usage: make remove PKG=requests"; exit 1)
+# 	cd "$(PROJECT_DIR)" && $(UV) remove $(PKG)
