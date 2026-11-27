@@ -18,6 +18,7 @@ from ...interfaces.vector_store.base import (
     SearchResult,
     VectorDocument,
 )
+from .filter_builder import QdrantFilterBuilder
 
 
 class QdrantVectorStore(BaseVectorStore):
@@ -31,6 +32,7 @@ class QdrantVectorStore(BaseVectorStore):
     def __init__(self, settings: AppSettings) -> None:
         self._settings = settings
         self._log = get_logger().bind(provider=self.PROVIDER)
+        self._filter_builder = QdrantFilterBuilder(settings)
 
         api_key: str | None = (
             settings.qdrant_api_key.get_secret_value() if settings.qdrant_api_key else None
@@ -163,15 +165,13 @@ class QdrantVectorStore(BaseVectorStore):
         return search_results
 
     def _build_filter(self, raw: dict[str, Any] | None) -> models.Filter | None:
-        """Convert a simple {field: value} mapping into a Qdrant filter."""
-        if not raw:
-            return None
-        return models.Filter(
-            must=[
-                models.FieldCondition(key=key, match=models.MatchValue(value=value))
-                for key, value in raw.items()
-            ]
-        )
+        """Convert caller filter conditions into a Qdrant filter.
+
+        Accepts the shorthand form (``{"source": "report.pdf"}``) and the
+        operator form (``{"page": {"op": "gte", "value": 3}}``). Fields not
+        on the settings allowlist are rejected with an error.
+        """
+        return self._filter_builder.build(raw)
 
     async def delete(self, ids: list[str]) -> None:
         """Remove documents by ID."""
