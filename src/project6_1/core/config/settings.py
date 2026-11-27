@@ -147,6 +147,45 @@ class AppSettings(_Base):
         default=True, validation_alias="INGEST_PDF_EXTRACT_IMAGES"
     )
 
+    # ---- Semantic cache (Redis / Redis Cloud) ----
+    cache_enabled: bool = Field(default=True, validation_alias="CACHE_ENABLED")
+    cache_provider: str = Field(default="redis", validation_alias="CACHE_PROVIDER")
+    redis_url: str = Field(default="redis://localhost:6379/0", validation_alias="REDIS_URL")
+    cache_namespace: str = Field(default="semcache", validation_alias="CACHE_NAMESPACE")
+    cache_ttl_seconds: int = Field(default=3600, validation_alias="CACHE_TTL_SECONDS")
+    cache_similarity_threshold: float = Field(
+        default=0.92, validation_alias="CACHE_SIMILARITY_THRESHOLD"
+    )
+    cache_max_entries_per_scope: int = Field(
+        default=128, validation_alias="CACHE_MAX_ENTRIES_PER_SCOPE"
+    )
+
+    # ---- Metadata filtering ----
+    # Comma-separated allowlist of payload fields callers may filter on.
+    metadata_filter_fields: str = Field(
+        default="source,file_type,kind,page", validation_alias="METADATA_FILTER_FIELDS"
+    )
+
+    # ---- Query summarizer (small LLM that condenses long queries) ----
+    query_summarizer_enabled: bool = Field(
+        default=False, validation_alias="QUERY_SUMMARIZER_ENABLED"
+    )
+    summarizer_model: str = Field(
+        default="", validation_alias="SUMMARIZER_MODEL"
+    )  # empty = reuse LLM_MODEL
+    summarizer_max_tokens: int = Field(default=120, validation_alias="SUMMARIZER_MAX_TOKENS")
+    summarizer_min_query_words: int = Field(
+        default=12, validation_alias="SUMMARIZER_MIN_QUERY_WORDS"
+    )
+    summarizer_max_words: int = Field(default=30, validation_alias="SUMMARIZER_MAX_WORDS")
+
+    @property
+    def allowed_metadata_filter_fields(self) -> frozenset[str]:
+        """Return the parsed metadata filter allowlist (empty set = filtering off)."""
+        return frozenset(
+            field.strip() for field in self.metadata_filter_fields.split(",") if field.strip()
+        )
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> AppSettings:
