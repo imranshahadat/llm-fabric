@@ -10,8 +10,12 @@ from project6_1.core.config.settings import (
     reset_settings_cache,
 )
 
+from ...domains.infrastructure.cache.factory import build_semantic_cache
 from ...domains.infrastructure.llm.factory import build_llm
+from ...domains.infrastructure.llm.query_summarizer import LLMQuerySummarizer
 from ...domains.interfaces.llm.base import BaseLLM
+from ...domains.interfaces.query_summarizer.base import BaseQuerySummarizer
+from ...domains.interfaces.semantic_cache.base import BaseSemanticCache
 from ..logging.setup import get_logger
 
 # Per-provider default base URLs. Providers that don't use an HTTP base URL
@@ -44,7 +48,10 @@ __all__ = [
     "DEFAULT_MODELS",
     "LLMProviderEnum",
     "get_llm",
+    "get_query_summarizer",
+    "get_semantic_cache",
     "reset_llm_cache",
+    "reset_summarizer_cache",
 ]
 
 
@@ -65,4 +72,27 @@ def get_llm() -> BaseLLM:
 def reset_llm_cache() -> None:
     """Clear the cached LLM client and settings so they rebuild on the next call."""
     get_llm.cache_clear()
+    reset_summarizer_cache()
     reset_settings_cache()
+
+
+@lru_cache(maxsize=1)
+def get_semantic_cache() -> BaseSemanticCache | None:
+    """Return a cached semantic cache instance, or None when disabled."""
+    cache = build_semantic_cache(get_settings())
+    if cache is None:
+        get_logger().info("semantic_cache_disabled")
+    return cache
+
+
+@lru_cache(maxsize=1)
+def get_query_summarizer() -> BaseQuerySummarizer:
+    """Return a cached query summarizer wired to the configured small LLM."""
+    settings = get_settings()
+    return LLMQuerySummarizer(settings, build_llm(settings))
+
+
+def reset_summarizer_cache() -> None:
+    """Clear the cached summarizer and semantic cache."""
+    get_query_summarizer.cache_clear()
+    get_semantic_cache.cache_clear()
