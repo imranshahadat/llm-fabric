@@ -3,7 +3,8 @@
 Staging is the first ingestion stage. Whatever the caller hands over — a
 local path, a directory, raw bytes, or a URL — it ends up as a
 :class:`~project6_1.domains.interfaces.ingestion.SourceFile` inside the
-configured upload directory, ready for a loader.
+configured upload directory, ready for a loader. Only extensions with a
+registered loader are accepted; see the factory's ``LOADER_REGISTRY``.
 """
 
 from __future__ import annotations

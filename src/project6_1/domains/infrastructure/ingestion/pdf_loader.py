@@ -1,18 +1,17 @@
-"""PDF loader: extracts text, tables and images from any PDF.
+"""PDF loader: text and table extraction with pymupdf — no images, no OCR.
 
-Strategy per page (order preserved by document order of elements):
+Strategy per page (document order is preserved):
 
-1. **Tables** — ``page.find_tables()`` detects ruled and borderless tables;
-   each is emitted as a markdown :class:`Document` with ``kind="table"``.
-2. **Text** — text blocks overlapping a table bbox are skipped, the rest
-   are joined in reading order (``kind="text"``).
-3. **Images** — embedded raster images are extracted and OCR'd
-   (``kind="image"``) when OCR is enabled and produces meaningful text.
-4. **Scanned pages** — a page with no text layer and no tables is
-   rasterized and OCR'd whole (``kind="page_ocr"``).
+1. **Tables** — ``page.find_tables()`` detects ruled and borderless
+   tables; each becomes a markdown :class:`Document` (``kind="table"``).
+2. **Text** — text blocks lying inside a table bbox are skipped (they
+   are table cell text); the rest are joined in reading order
+   (``kind="text"``).
+3. **Image-only pages** — a page with no text layer and no tables (a
+   scan) yields nothing and is logged. We deliberately do not OCR.
 
-OCR is optional: it degrades gracefully when ``pytesseract``/the
-``tesseract`` binary are unavailable (a warning is recorded instead).
+Scanned PDFs are therefore out of scope by design: this pipeline works
+on PDFs with a real text layer (digitally generated PDFs).
 """
 
 from __future__ import annotations
@@ -21,16 +20,10 @@ from typing import Any
 
 import pymupdf
 
-from ....core.config.settings import AppSettings
 from ....core.exceptions.ingestion import DocumentLoadError
 from ....core.logging.setup import get_logger
 from ...interfaces.ingestion.base import BaseLoader, Document, SourceFile
-from .ocr import OcrEngine
 from .shared import document_id
-
-# Text shorter than this from an image OCR is treated as noise (logos,
-# page furniture) and dropped.
-_OCR_MIN_CHARS = 20
 
 # A text block overlapping a table bbox by this share of its area counts
 # as table content (bboxes can undershoot the drawn grid slightly).
@@ -41,27 +34,25 @@ _TABLE_BBOX_PAD = 6.0
 
 
 class PdfLoader(BaseLoader):
-    """Loads PDFs with table, image and scanned-page handling."""
+    """Loads text and tables from PDFs that have a text layer."""
 
     supported_extensions = ("pdf",)
 
-    def __init__(self, settings: AppSettings) -> None:
-        self._settings = settings
+    def __init__(self) -> None:
         self._log = get_logger().bind(loader="pdf")
-        self._ocr = OcrEngine(settings)
 
     def load(self, source: SourceFile) -> list[Document]:
-        """Parse a staged PDF into page-ordered documents."""
+        """Parse a staged PDF into page-ordered text/table documents."""
         documents: list[Document] = []
 
-        # pymupdf 2.x ships only partial type stubs; the objects are kept
-        # as Any at this boundary so the strict checker sees our types.
+        # pymupdf ships only partial type stubs; objects are kept as Any
+        # at this boundary so the strict checker sees our types.
         pdf_doc: Any = None
         try:
             pdf_doc = pymupdf.open(source["path"])
             for page_number in range(1, int(pdf_doc.page_count) + 1):
                 page: Any = pdf_doc[page_number - 1]
-                documents.extend(self._load_page(pdf_doc, page, page_number, source))
+                documents.extend(self._load_page(page, page_number, source))
         except DocumentLoadError:
             raise
         except Exception as error:  # pymupdf raises RuntimeError/ValueError on bad files
@@ -79,14 +70,8 @@ class PdfLoader(BaseLoader):
 
     # ---- per-page extraction ------------------------------------------------
 
-    def _load_page(
-        self,
-        doc: Any,
-        page: Any,
-        page_number: int,
-        source: SourceFile,
-    ) -> list[Document]:
-        """Extract tables, text, images (and OCR fallbacks) from one page."""
+    def _load_page(self, page: Any, page_number: int, source: SourceFile) -> list[Document]:
+        """Extract tables and text from one page, in document order."""
         meta = self._page_meta(source, page_number)
         documents: list[Document] = []
 
@@ -109,22 +94,11 @@ class PdfLoader(BaseLoader):
                     )
                 )
 
-        text_documents = self._extract_text(page, table_bboxes, meta)
-        documents.extend(text_documents)
+        documents.extend(self._extract_text(page, table_bboxes, meta))
 
-        did_page_ocr = False
-        if not documents and self._settings.ingest_enable_ocr:
-            # No text layer and no tables -> scanned page: OCR the raster.
-            ocr_text = self._ocr.rasterize_and_read(page)
-            if ocr_text:
-                documents.append(self._document(ocr_text, {**meta, "kind": "page_ocr"}))
-                did_page_ocr = True
-
-        if self._settings.ingest_pdf_extract_images and not did_page_ocr:
-            # Whole-page OCR already covered embedded images; per-image OCR
-            # would only duplicate the text.
-            documents.extend(self._extract_images(doc, page, meta))
-
+        if not documents:
+            # No text layer and no tables -> a scan or purely visual page.
+            self._log.info("page_skipped_no_text", filename=source["filename"], page=page_number)
         return documents
 
     def _extract_text(
@@ -133,7 +107,7 @@ class PdfLoader(BaseLoader):
         table_bboxes: list[Any],
         meta: dict[str, Any],
     ) -> list[Document]:
-        """Join non-table text blocks into reading-order documents."""
+        """Join non-table text blocks into one reading-order document."""
         blocks: Any = page.get_text("blocks")
         kept: list[tuple[float, float, str]] = []
         for block in blocks:
@@ -157,43 +131,10 @@ class PdfLoader(BaseLoader):
         content = "\n".join(text for _y, _x, text in kept)
         return [self._document(content, {**meta, "kind": "text"})]
 
-    def _extract_images(
-        self,
-        doc: Any,
-        page: Any,
-        meta: dict[str, Any],
-    ) -> list[Document]:
-        """OCR meaningful raster images embedded in the page."""
-        if not self._settings.ingest_enable_ocr or not self._ocr.available:
-            return []
-
-        documents: list[Document] = []
-        for index, image in enumerate(page.get_images(full=True)):
-            xref = image[0]
-            try:
-                extracted: Any = doc.extract_image(xref)
-            except Exception as error:  # malformed image stream — skip, keep loading
-                self._log.warning("image_extract_failed", xref=xref, error=str(error))
-                continue
-
-            ocr_text = self._ocr.read_bytes(extracted["image"])
-            if ocr_text and len(ocr_text) >= _OCR_MIN_CHARS:
-                documents.append(
-                    self._document(
-                        ocr_text,
-                        {
-                            **meta,
-                            "kind": "image",
-                            "element_index": index,
-                            "image_ext": str(extracted["ext"]),
-                        },
-                    )
-                )
-        return documents
-
     # ---- helpers ------------------------------------------------------------
 
     def _page_meta(self, source: SourceFile, page_number: int) -> dict[str, Any]:
+        """Standard metadata keys every document on a page carries."""
         return {
             "source": source["filename"],
             "file_type": source["file_type"],
@@ -201,6 +142,7 @@ class PdfLoader(BaseLoader):
         }
 
     def _document(self, content: str, metadata: dict[str, Any]) -> Document:
+        """Build one Document with a deterministic, re-ingest-safe ID."""
         return Document(
             id=document_id(metadata["source"], content, metadata.get("page")),
             content=content,

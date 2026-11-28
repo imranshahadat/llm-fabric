@@ -149,7 +149,9 @@ class IngestionService:
     # ---- adapters ------------------------------------------------------------
 
     def _loader_for(self, file: SourceFile) -> BaseLoader:
+        """Build the loader registered for this file's type."""
         return build_loader(file["file_type"], self._settings)
 
     def _splitter(self) -> BaseSplitter:
+        """Build the configured chunk splitter."""
         return build_splitter(self._settings)

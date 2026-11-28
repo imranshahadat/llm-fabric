@@ -156,9 +156,9 @@ def test_build_splitter_returns_configured_splitter(tmp_path: Path) -> None:
     assert splitter._size == 333  # type: ignore[attr-defined]
 
 
-def test_build_loader_rejects_unknown(tmp_path: Path) -> None:
+def test_build_loader_rejects_unknown() -> None:
     with pytest.raises(UnsupportedFileTypeError):
-        build_loader("rar", make_settings(tmp_path))
+        build_loader("rar")
 
 
 # ---- service -----------------------------------------------------------------

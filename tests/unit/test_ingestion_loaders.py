@@ -2,18 +2,19 @@
 
 PDF/DOCX fixtures are generated on the fly with the same libraries the
 loaders use (pymupdf, python-docx), covering text pages, ruled tables
-and a scanned page that only OCR can read.
+and an image-only (scanned) page — which the text-only pipeline must
+skip without failing.
 """
 
 from __future__ import annotations
 
+import io
 from pathlib import Path
 from typing import Any
 
 import pymupdf
 import pytest
 
-from project6_1.core.config.settings import AppSettings
 from project6_1.core.exceptions.ingestion import DocumentLoadError
 from project6_1.domains.infrastructure.ingestion.docx_loader import DocxLoader
 from project6_1.domains.infrastructure.ingestion.factory import build_loader
@@ -27,11 +28,8 @@ from project6_1.domains.infrastructure.ingestion.text_loader import (
 from project6_1.domains.interfaces.ingestion.base import SourceFile
 
 
-def make_settings(tmp_path: Path, **overrides: Any) -> AppSettings:
-    return AppSettings(ingest_upload_dir=str(tmp_path / "uploads"), **overrides)
-
-
 def make_source(path: Path, file_type: str | None = None) -> SourceFile:
+    """Build a SourceFile dict for an on-disk fixture."""
     return SourceFile(
         path=str(path),
         filename=path.name,
@@ -45,7 +43,7 @@ def make_source(path: Path, file_type: str | None = None) -> SourceFile:
 
 @pytest.fixture()
 def pdf_with_all_elements(tmp_path: Path) -> Path:
-    """PDF: text page + ruled table page + scanned (image-only) page."""
+    """PDF: text page + ruled table page + image-only (scanned) page."""
     path = tmp_path / "sample.pdf"
     # pymupdf objects are kept as Any: its stubs are only partial.
     doc: Any = pymupdf.open()
@@ -65,6 +63,8 @@ def pdf_with_all_elements(tmp_path: Path) -> Path:
         for c, value in enumerate(row):
             page2.insert_text((cols[c] + 4, rows[r] + 20), value, fontsize=10)
 
+    # Image-only page: text exists only as pixels, so a text-only loader
+    # must skip it (no OCR in this pipeline).
     page3 = doc.new_page()
     scan: Any = pymupdf.open()
     scan_page = scan.new_page(width=500, height=200)
@@ -81,6 +81,7 @@ def pdf_with_all_elements(tmp_path: Path) -> Path:
 
 @pytest.fixture()
 def docx_with_table(tmp_path: Path) -> Path:
+    """DOCX: two headed sections plus one 2x2 table."""
     from docx import Document
 
     path = tmp_path / "policy.docx"
@@ -102,14 +103,12 @@ def docx_with_table(tmp_path: Path) -> Path:
 # ---- PDF loader --------------------------------------------------------------
 
 
-def test_pdf_extracts_text_table_and_ocr(pdf_with_all_elements: Path, tmp_path: Path) -> None:
-    loader = PdfLoader(make_settings(tmp_path))
-    docs = loader.load(make_source(pdf_with_all_elements))
+def test_pdf_extracts_text_and_table(pdf_with_all_elements: Path) -> None:
+    docs = PdfLoader().load(make_source(pdf_with_all_elements))
 
     kinds = [d["metadata"]["kind"] for d in docs]
     assert "text" in kinds
     assert "table" in kinds
-    assert "page_ocr" in kinds
 
     text_doc = next(d for d in docs if d["metadata"]["kind"] == "text")
     assert "budget of $3,000" in text_doc["content"]
@@ -121,43 +120,36 @@ def test_pdf_extracts_text_table_and_ocr(pdf_with_all_elements: Path, tmp_path: 
     assert table_doc["metadata"]["page"] == 2
     assert table_doc["metadata"]["rows"] == 3
 
-    ocr_doc = next(d for d in docs if d["metadata"]["kind"] == "page_ocr")
-    assert "delivery note 42" in ocr_doc["content"]
-    assert ocr_doc["metadata"]["page"] == 3
 
+def test_pdf_skips_image_only_page(pdf_with_all_elements: Path) -> None:
+    """The scanned page has no text layer -> skipped, no error, no OCR."""
+    docs = PdfLoader().load(make_source(pdf_with_all_elements))
 
-def test_pdf_without_ocr_skips_scanned_page(pdf_with_all_elements: Path, tmp_path: Path) -> None:
-    loader = PdfLoader(make_settings(tmp_path, ingest_enable_ocr=False))
-    docs = loader.load(make_source(pdf_with_all_elements))
-
-    assert "page_ocr" not in [d["metadata"]["kind"] for d in docs]
-    # The two pages with a text layer are still loaded.
+    kinds = [d["metadata"]["kind"] for d in docs]
+    assert "image" not in kinds and "page_ocr" not in kinds
+    # Only the two pages with a text layer produce documents.
     assert {d["metadata"]["page"] for d in docs} == {1, 2}
+    assert all("delivery note" not in d["content"] for d in docs)
 
 
 def test_corrupt_pdf_raises_load_error(tmp_path: Path) -> None:
     path = tmp_path / "broken.pdf"
     path.write_bytes(b"%PDF-1.4 this is not really a pdf\x00\x01\x02")
-    loader = PdfLoader(make_settings(tmp_path))
     with pytest.raises(DocumentLoadError):
-        loader.load(make_source(path))
+        PdfLoader().load(make_source(path))
 
 
 # ---- DOCX loader -------------------------------------------------------------
 
 
-def test_docx_sections_and_table(docx_with_table: Path, tmp_path: Path) -> None:
-    loader = DocxLoader(make_settings(tmp_path))
-    docs = loader.load(make_source(docx_with_table))
+def test_docx_sections_and_table(docx_with_table: Path) -> None:
+    docs = DocxLoader().load(make_source(docx_with_table))
 
     kinds = [d["metadata"]["kind"] for d in docs]
     assert "text" in kinds and "table" in kinds
 
     table_doc = next(d for d in docs if d["metadata"]["kind"] == "table")
-    assert (
-        "| Hotel | $200 |" in table_doc["content"].replace("\n", " ")
-        or "| Hotel | $200 |" in table_doc["content"]
-    )
+    assert "| Hotel | $200 |" in table_doc["content"]
     assert table_doc["metadata"]["rows"] == 2
 
     text_docs = [d for d in docs if d["metadata"]["kind"] == "text"]
@@ -166,13 +158,41 @@ def test_docx_sections_and_table(docx_with_table: Path, tmp_path: Path) -> None:
     assert "$200 per night" in joined
     # Heading text is kept as section metadata on section documents.
     assert any(d["metadata"].get("section") == "Limits" for d in text_docs)
+    # The heading must NOT be duplicated inside the section content.
+    assert all(d["content"].count("Expense Rules") == 0 for d in text_docs)
+    assert all(d["content"].count("Limits") == 0 for d in text_docs)
+    # A table below a heading carries that heading as section context.
+    assert table_doc["metadata"].get("section") == "Limits"
+
+
+def test_docx_with_inline_picture_is_text_only(tmp_path: Path) -> None:
+    """A picture inside a .docx is ignored; text and tables still load."""
+    from docx import Document
+
+    path = tmp_path / "with_image.docx"
+    doc: Any = Document()
+    doc.add_heading("Report", level=1)
+    doc.add_paragraph("Picture follows.")
+
+    png = (
+        b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+        b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01"
+        b"\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+    )
+    doc.add_picture(io.BytesIO(png), width=914400)
+    doc.save(str(path))
+
+    docs = DocxLoader().load(make_source(path))
+    kinds = [d["metadata"]["kind"] for d in docs]
+    assert "image" not in kinds
+    assert "Picture follows." in "\n".join(d["content"] for d in docs)
 
 
 # ---- text family loaders -----------------------------------------------------
 
 
 def test_text_loader_txt_and_md(tmp_path: Path) -> None:
-    loader = TextLoader(make_settings(tmp_path))
+    loader = TextLoader()
 
     txt = tmp_path / "notes.txt"
     txt.write_text("first line\nsecond line", encoding="utf-8")
@@ -187,7 +207,7 @@ def test_text_loader_txt_and_md(tmp_path: Path) -> None:
 
 
 def test_text_loader_latin1_fallback(tmp_path: Path) -> None:
-    loader = TextLoader(make_settings(tmp_path))
+    loader = TextLoader()
     path = tmp_path / "legacy.txt"
     path.write_bytes("caf\xe9 cr\xe8me".encode("latin-1"))
     docs = loader.load(make_source(path))
@@ -195,7 +215,7 @@ def test_text_loader_latin1_fallback(tmp_path: Path) -> None:
 
 
 def test_json_loader(tmp_path: Path) -> None:
-    loader = JsonLoader(make_settings(tmp_path))
+    loader = JsonLoader()
     path = tmp_path / "data.json"
     path.write_text('{"a": 1, "b": ["x", "y"]}', encoding="utf-8")
     docs = loader.load(make_source(path))
@@ -203,7 +223,7 @@ def test_json_loader(tmp_path: Path) -> None:
 
 
 def test_csv_loader_becomes_markdown_table(tmp_path: Path) -> None:
-    loader = CsvLoader(make_settings(tmp_path))
+    loader = CsvLoader()
     path = tmp_path / "cities.csv"
     path.write_text("city,country\nLisbon,Portugal\nOslo,Norway\n", encoding="utf-8")
     docs = loader.load(make_source(path))
@@ -214,7 +234,7 @@ def test_csv_loader_becomes_markdown_table(tmp_path: Path) -> None:
 
 
 def test_tsv_loader(tmp_path: Path) -> None:
-    loader = CsvLoader(make_settings(tmp_path))
+    loader = CsvLoader()
     path = tmp_path / "matrix.tsv"
     path.write_text("a\tb\n1\t2\n", encoding="utf-8")
     docs = loader.load(make_source(path))
@@ -222,7 +242,7 @@ def test_tsv_loader(tmp_path: Path) -> None:
 
 
 def test_html_loader_text_and_table(tmp_path: Path) -> None:
-    loader = HtmlLoader(make_settings(tmp_path))
+    loader = HtmlLoader()
     path = tmp_path / "page.html"
     path.write_text(
         "<html><head><style>b{color:red}</style></head><body>"
@@ -241,17 +261,17 @@ def test_html_loader_text_and_table(tmp_path: Path) -> None:
 # ---- factory routing ---------------------------------------------------------
 
 
-def test_factory_builds_correct_loader(tmp_path: Path) -> None:
-    assert isinstance(build_loader("pdf", make_settings(tmp_path)), PdfLoader)
-    assert isinstance(build_loader("docx", make_settings(tmp_path)), DocxLoader)
-    assert isinstance(build_loader("csv", make_settings(tmp_path)), CsvLoader)
-    assert isinstance(build_loader("html", make_settings(tmp_path)), HtmlLoader)
-    assert isinstance(build_loader("json", make_settings(tmp_path)), JsonLoader)
-    assert isinstance(build_loader("md", make_settings(tmp_path)), TextLoader)
+def test_factory_builds_correct_loader() -> None:
+    assert isinstance(build_loader("pdf"), PdfLoader)
+    assert isinstance(build_loader("docx"), DocxLoader)
+    assert isinstance(build_loader("csv"), CsvLoader)
+    assert isinstance(build_loader("html"), HtmlLoader)
+    assert isinstance(build_loader("json"), JsonLoader)
+    assert isinstance(build_loader("md"), TextLoader)
 
 
-def test_factory_rejects_unknown_type(tmp_path: Path) -> None:
+def test_factory_rejects_unknown_type() -> None:
     from project6_1.core.exceptions.ingestion import UnsupportedFileTypeError
 
     with pytest.raises(UnsupportedFileTypeError):
-        build_loader("exe", make_settings(tmp_path))
+        build_loader("exe")

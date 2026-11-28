@@ -14,7 +14,6 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
-from ....core.config.settings import AppSettings
 from ....core.exceptions.ingestion import DocumentLoadError
 from ....core.logging.setup import get_logger
 from ...interfaces.ingestion.base import BaseLoader, Document, SourceFile
@@ -25,10 +24,9 @@ _CSV_ROWS_PER_DOC = 200
 
 
 class _TextLoaderBase(BaseLoader):
-    """Shared plumbing for the single-file text loaders."""
+    """Shared plumbing for the single-file text loaders: read + error-wrap."""
 
-    def __init__(self, settings: AppSettings) -> None:
-        self._settings = settings
+    def __init__(self) -> None:
         self._log = get_logger().bind(loader=type(self).__name__)
 
     def load(self, source: SourceFile) -> list[Document]:
@@ -53,6 +51,7 @@ class _TextLoaderBase(BaseLoader):
         raise NotImplementedError
 
     def _document(self, content: str, source: SourceFile, kind: str, **extra: Any) -> Document:
+        """Build one Document with the standard metadata keys."""
         metadata: dict[str, Any] = {
             "source": source["filename"],
             "file_type": source["file_type"],
@@ -67,7 +66,7 @@ class _TextLoaderBase(BaseLoader):
 
 
 class TextLoader(_TextLoaderBase):
-    """Loads TXT and Markdown files as one document."""
+    """Loads TXT and Markdown files as one text document."""
 
     supported_extensions = ("txt", "md", "markdown")
 
@@ -77,7 +76,7 @@ class TextLoader(_TextLoaderBase):
 
 
 class JsonLoader(_TextLoaderBase):
-    """Loads JSON files as one pretty-printed document."""
+    """Loads JSON files as one pretty-printed text document."""
 
     supported_extensions = ("json",)
 
@@ -88,7 +87,7 @@ class JsonLoader(_TextLoaderBase):
 
 
 class CsvLoader(_TextLoaderBase):
-    """Loads CSV files as markdown table documents (header repeated per group)."""
+    """Loads CSV/TSV files as markdown table documents (header per group)."""
 
     supported_extensions = ("csv", "tsv")
 
@@ -119,7 +118,7 @@ class CsvLoader(_TextLoaderBase):
 
 
 class HtmlLoader(_TextLoaderBase):
-    """Loads HTML files: readable text and <table> elements as markdown."""
+    """Loads HTML files: visible text plus <table> elements as markdown."""
 
     supported_extensions = ("html", "htm")
 
@@ -176,10 +175,10 @@ class _HtmlContentParser(HTMLParser):
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
-        self.blocks: list[str] = []
-        self.tables: list[list[list[str]]] = []
-        self._buffer: list[str] = []
-        self._skip_depth = 0
+        self.blocks: list[str] = []  # visible text blocks
+        self.tables: list[list[list[str]]] = []  # table cell grids
+        self._buffer: list[str] = []  # pending text of the open block
+        self._skip_depth = 0  # inside script/style/head/...
         self._table: list[list[str]] | None = None
         self._row: list[str] | None = None
         self._cell: list[str] | None = None
